@@ -17,6 +17,16 @@ from torch.utils.data import DataLoader # diperlukan untuk membuat batch
 
 import matplotlib.pyplot as plt
 
+import requests
+from pathlib import Path
+if Path("Helper_function.py").is_file():
+    print("Exist")
+else:
+    print("download")
+    request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/refs/heads/main/helper_functions.py")
+    with open("helper_function.py","wb") as f:
+        f.write(request.content)
+
 # dataset yang akan digunakan adalah FashionMNIST dari torchvision.dataset
 
 trainData = datasets.FashionMNIST(
@@ -109,3 +119,75 @@ plt.axis(False)
 # plt.show()
 
 # membuat model
+
+# device = "cuda" if torch.cuda.is_available else "cpu"
+
+# Basline mdoel
+# basline model adalah versi simple dari model yang akan dikembangkan tergantung pada kebutuhan
+# untuk mengatasi kompleksitas
+
+# membuat flatten layer
+flattenModel = nn.Flatten()
+
+X = trainFeaturesBatch[0]
+# flatten the sample
+output = flattenModel(X)
+
+print(f"shape before flattening: {X.shape}")
+print(f"shape after flattening: {output.shape}")
+# flatten membuat output menjadi vector dengan melakukan perkalian antar weight dna height
+
+
+class FashionMNISTModelV0(nn.Module):
+    def __init__(self, input:int,
+                 neurons:int,
+                 output:int):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=input,
+                      out_features=neurons),
+            nn.Linear(in_features=neurons,
+                      out_features=output),
+        )
+    def forward(self,x):
+        return self.layers(x)
+
+model0 = FashionMNISTModelV0(
+    input=784,
+    neurons=10,
+    output=len(className)
+)
+# input ditentukan oleh flatten
+# output len() menentukan satu 1 dari setiap kelas
+
+print(model0)
+
+# membuat dummy forward pass
+dummyX = torch.rand(1, 1, 28, 28)
+print(model0(dummyX))
+
+# setup loss,optimizer and evaluation metrics
+
+lossFn = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(params=model0.parameters(),
+                            lr=0.1)
+
+from helper_function import accuracy_fn
+
+
+# membuat function untuk mengukur waktu eksperimen
+
+from timeit import default_timer as timer
+def printTrainTime(start:float,
+                   end:float,
+                   device: torch.device = None):
+    """print perbandingan antara start dan end time"""
+    totalTime = end-start
+    print(f"Train time on {device}: {totalTime:.3f} seconds")
+    return totalTime
+
+startTime = timer()
+# code ...
+endTime = timer()
+printTrainTime(start=startTime,end=endTime,device="cpu")
