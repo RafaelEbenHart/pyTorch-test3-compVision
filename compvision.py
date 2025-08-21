@@ -191,3 +191,73 @@ startTime = timer()
 # code ...
 endTime = timer()
 printTrainTime(start=startTime,end=endTime,device="cpu")
+
+# membuat train dan test loop
+# 1. loop through epochs
+# 2. loop through training batches,perform training step,calculate the train loss per batch
+# 3. loop through testing batches,perform testing step,calculate teh test loss per batch
+# 4. print
+# 5. time it
+
+# import tqdm - progress bar
+from tqdm.auto import tqdm
+
+# set seed dan timer
+torch.manual_seed(42)
+trainTimeStartCpu = timer()
+
+# set epochs
+epochs = 3
+
+# membuat
+for epoch in tqdm(range(epochs)):
+    print(f"\nEpoch: {epoch}\n------")
+
+    trainLoss = 0
+    # add a loop to loop through the training batches
+    for batch , (X,y) in enumerate(trainDataLoader):
+        model0.train()
+        # forward()
+        yPred = model0(X)
+        #loss calculate per batch
+        loss = lossFn(yPred,y)
+        trainLoss += loss # akumulasi train loss
+        # optimizer
+        optimizer.zero_grad()
+        # loss backward
+        loss.backward()
+        #step
+        optimizer.step()
+
+        # print()
+        if batch % 400 == 0:
+            print(f"Looked at {batch * len(X)}/{len(trainDataLoader.dataset)} samples")
+        # devide total train loss by len of train data looader
+        trainLoss /= len(trainDataLoader)
+
+    ## testing
+    testLoss,testAcc = 0,0
+    model0.eval()
+    with torch.inference_mode():
+        for X,y in testDataLoader:
+            # forward
+            testPred = model0(X)
+            # calculate loss
+            testLoss += lossFn(testPred,y)
+            # calculate acc
+            testAcc += accuracy_fn(y_true=y, y_pred=testPred.argmax(dim=1))
+        # calculate test loss average per batch
+        testLoss /= len(testDataLoader)
+
+        # calculate test acc avg per batch
+        testAcc /= len(testDataLoader)
+
+    # print()
+    print(f"\n| Train Loss: {trainLoss:.4f} | Test Loss: {testLoss:.4f} | Test Acc: {testAcc:.4f} |")
+
+trainTimeEndCpu = timer()
+totalTrainTimeMOdel0 = printTrainTime(start=trainTimeStartCpu,
+                                      end=trainTimeEndCpu,
+                                      device=str(next(model0.parameters()).device))
+
+
