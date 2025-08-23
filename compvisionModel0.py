@@ -16,6 +16,9 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader # diperlukan untuk membuat batch
 
 import matplotlib.pyplot as plt
+from helper_function import accuracy_fn
+from timeit import default_timer as timer
+from tqdm.auto import tqdm
 
 import requests
 from pathlib import Path
@@ -173,12 +176,12 @@ lossFn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(params=model0.parameters(),
                             lr=0.1)
 
-from helper_function import accuracy_fn
+
 
 
 # membuat function untuk mengukur waktu eksperimen
 
-from timeit import default_timer as timer
+
 def printTrainTime(start:float,
                    end:float,
                    device: torch.device = None):
@@ -200,7 +203,7 @@ printTrainTime(start=startTime,end=endTime,device="cpu")
 # 5. time it
 
 # import tqdm - progress bar
-from tqdm.auto import tqdm
+
 
 # set seed dan timer
 torch.manual_seed(42)
@@ -260,4 +263,35 @@ totalTrainTimeMOdel0 = printTrainTime(start=trainTimeStartCpu,
                                       end=trainTimeEndCpu,
                                       device=str(next(model0.parameters()).device))
 
+# membuat prediksi antara beberapa model
+
+torch.manual_seed(42)
+def evalModel(model: torch.nn.Module,
+             dataLoader: torch.utils.data.DataLoader,
+             lossFn: torch.nn.Module,
+             accuracy_fn):
+    """Returns a dictionary containing the results of model predicting on data_loader"""
+    loss, acc = 0,0
+    model.eval()
+    with torch.inference_mode():
+        for X,y in tqdm(dataLoader):
+            # prediksi
+            yPred = model(X)
+            # akumulasi loss dan Acc per batch
+            loss += lossFn(yPred,y)
+            acc += accuracy_fn(y_true=y,
+                               y_pred=yPred.argmax(dim=1))
+
+        # scale loss and acc to find avg per batch
+        loss /= len(dataLoader)
+        acc /= len(dataLoader)
+    return {"modelName" : model.__class__.__name__,# hanya bisa berkerja jika mmodel dibuat dengan class
+            "ModelLoss" : f"{loss.item():.5f}",
+            "ModelAcc" : f"{acc:.2f}%"}
+
+model0Result = evalModel(model=model0,
+                         dataLoader=testDataLoader,
+                         lossFn=lossFn,
+                         accuracy_fn=accuracy_fn)
+print(model0Result)
 
