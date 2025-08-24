@@ -138,7 +138,7 @@ output = flattenModel(X)
 
 print(f"shape before flattening: {X.shape}")
 print(f"shape after flattening: {output.shape}")
-# flatten membuat output menjadi vector dengan melakukan perkalian antar weight dna height
+# flatten membuat output menjadi vector dengan melakukan perkalian antar tiap dimensi pada tensor (1 x 28 x 28)
 
 
 class FashionMNISTModelV0(nn.Module):
