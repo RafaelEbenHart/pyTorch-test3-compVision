@@ -259,7 +259,7 @@ for epoch in tqdm(range(epochs)):
     print(f"\n| Train Loss: {trainLoss:.4f} | Test Loss: {testLoss:.4f} | Test Acc: {testAcc:.4f} |")
 
 trainTimeEndCpu = timer()
-totalTrainTimeMOdel0 = printTrainTime(start=trainTimeStartCpu,
+totalTrainTimeModel0 = printTrainTime(start=trainTimeStartCpu,
                                       end=trainTimeEndCpu,
                                       device=str(next(model0.parameters()).device))
 
@@ -285,9 +285,9 @@ def evalModel(model: torch.nn.Module,
         # scale loss and acc to find avg per batch
         loss /= len(dataLoader)
         acc /= len(dataLoader)
-    return {"modelName" : model.__class__.__name__,# hanya bisa berkerja jika mmodel dibuat dengan class
-            "ModelLoss" : f"{loss.item():.5f}",
-            "ModelAcc" : f"{acc:.2f}%"}
+    return {"ModelName" : model.__class__.__name__,# hanya bisa berkerja jika mmodel dibuat dengan class
+            "ModelLoss" : loss.item(),
+            "ModelAcc" : acc}
 
 model0Result = evalModel(model=model0,
                          dataLoader=testDataLoader,

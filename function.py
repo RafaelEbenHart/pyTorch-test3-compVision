@@ -26,11 +26,9 @@ def evalModel(model: torch.nn.Module,
         # scale loss and acc to find avg per batch
         loss /= len(dataLoader)
         acc /= len(dataLoader)
-    result = {"modelName" : model.__class__.__name__,# hanya bisa berkerja jika mmodel dibuat dengan class
-            "ModelLoss" : f"{loss.item():.5f}",
-            "ModelAcc" : f"{acc:.2f}%"}
-    for key,value in result.items():
-        print(f"{key}: {value}")
+    result = {"ModelName" : model.__class__.__name__,# hanya bisa berkerja jika mmodel dibuat dengan class
+            "ModelLoss" : loss.item(),
+            "ModelAcc" : acc}
     return result
 
 # time
@@ -68,7 +66,7 @@ def trainStep(model: torch.nn.Module,
 
         # show batch
         if batch % perBatch == 0:
-            print(f"Looked at: {(batch * len(X)) + perBatch}/{len(dataLoader.dataset)}")
+            print(f"Looked at: {(batch * len(X)) + perBatch}/{len(dataLoader.dataset)} samples")
 
     # calculate avg
     trainLoss /= len(dataLoader)
@@ -97,3 +95,24 @@ def testStep(model: torch.nn.Module,
         testAcc /= len(dataLoader)
         print(f"|Test Loss: {testLoss:.5f} | Test Acc: {testAcc:.2f}%|")
 
+def makePredictions(model:torch.nn.Module,
+                    data:list):
+    predProbs = []
+    device = next(model.parameters()).device
+    model.eval()
+    with torch.inference_mode():
+        for sample in data:
+            # prepare the sample (add a batch dimensio and pass to target device)
+            sample = torch.unsqueeze(sample,dim=0).to(device)
+
+            # forward pass (model output raw logits)
+            predLogits = model(sample)
+
+            # get prediction probability (logit -> preediction probability)
+            predProb = torch.softmax(predLogits.squeeze(),dim=0)
+
+            # get predprobs off the CUDA for further calculations
+            predProbs.append(predProb.cpu())
+
+    # stack the predProbs to turn list into a tensor
+    return torch.stack(predProbs)

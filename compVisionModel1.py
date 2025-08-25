@@ -13,6 +13,8 @@ from function import evalModel,printTrainTime,trainStep,testStep
 from timeit import default_timer as timer
 from tqdm.auto import tqdm
 
+
+
 device = "cuda" if torch.cuda.is_available else "cpu"
 
 trainData = datasets.FashionMNIST(
@@ -116,7 +118,7 @@ for epoch in tqdm(range(epochs)):
               lossFn=lossfn,
               optimizer=optimizer,
               accFn=accuracy_fn,
-              perBatch=1000)
+              perBatch=400)
     testStep(model=model1,
              dataLoader=testDataLoader,
              lossFn=lossfn,
@@ -124,7 +126,7 @@ for epoch in tqdm(range(epochs)):
 
 
 timeEndCuda = timer()
-model1TotalTime = printTrainTime(start=timeStartCuda,
+TotalTrainTimeModel1 = printTrainTime(start=timeStartCuda,
                                  end=timeEndCuda,
                                  device=str(next(model1.parameters()).device))
 torch.manual_seed(42)

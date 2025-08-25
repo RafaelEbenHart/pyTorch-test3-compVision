@@ -8,8 +8,10 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader # diperlukan untuk membuat batch
 
 import matplotlib.pyplot as plt
+import torchmetrics
+import mlxtend
 from helper_function import accuracy_fn
-from function import evalModel,printTrainTime,trainStep,testStep
+from function import evalModel,printTrainTime,trainStep,testStep,makePredictions
 from timeit import default_timer as timer
 from tqdm.auto import tqdm
 
@@ -17,7 +19,7 @@ from tqdm.auto import tqdm
 # CNN biasa dikenal dengan ConvNets
 # CNN memiliki kemampuan untuk mengenal pola pada data visual
 
-device = "cpu"
+device = "cuda"
 
 trainData = datasets.FashionMNIST(
     root="data", # where to download data to?
@@ -93,12 +95,12 @@ class FashionMNISTCNN(nn.Module):
         )
     def forward(self,x):
         x = self.convBlock1(x)
-        print(f"x pada convBlock 1: {x.shape}")
+        # print(f"x pada convBlock 1: {x.shape}")
         x = self.convBlock2(x)
-        print(f"x pada convBlock 2: {x.shape}")
-        print(f"Maxpool2d: {flatten(x).shape}")
+        # print(f"x pada convBlock 2: {x.shape}")
+        # print(f"Maxpool2d: {flatten(x).shape}")
         x = self.classifier(x)
-        print(f"x pada classifier: {x.shape}") # print digunakan untuk troublesh0ot
+        # print(f"x pada classifier: {x.shape}") # print digunakan untuk troublesh0ot
         return x
 
 torch.manual_seed(42)
@@ -135,7 +137,7 @@ print(maxPoolLayerOutput.shape)
 # test model dengan data
 randImgtensor = torch.randn(1, 1, 28, 28)
 # print(randImgtensor.shape)
-print(model2(randImgtensor).to(device))
+# print(model2(randImgtensor).to(device))
 
 
 BATCH_SIZE = 32
@@ -147,4 +149,125 @@ testDataLoader = DataLoader(dataset=testData,
                             shuffle=False)
 
 # print(model2.parameters())
+
+## loss function and optimizer
+
+lossFn = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(params=model2.parameters(),
+                            lr=0.1)
+# train and test loop
+
+torch.manual_seed(42)
+startTime = timer()
+epochs = 3
+
+for epoch in tqdm(range(epochs)):
+    print(f"\nEpoch: {epoch+1}/{epochs} \n------")
+    trainStep(model=model2,
+              dataLoader=trainDataLoader,
+              lossFn=lossFn,
+              optimizer=optimizer,
+              accFn=accuracy_fn,
+              perBatch=4000)
+    testStep(model=model2,
+             dataLoader=testDataLoader,
+             lossFn=lossFn,
+             accFn=accuracy_fn)
+endTime = timer()
+totalTrainTimeModel2 = printTrainTime(start=startTime,
+                                    end=endTime,
+                                    device=str(next(model2.parameters()).device))
+
+model2Result = evalModel(model=model2,
+                          dataLoader=testDataLoader,
+                          lossFn=lossFn,
+                          accuracy_fn=accuracy_fn)
+
+print(model2Result)
+
+###### prediction ######
+
+import random
+# random.seed(42)
+testSamples = []
+testLabel = []
+for sample,label in random.sample(list(testData), k=12):
+    testSamples.append(sample)
+    testLabel.append(label)
+
+# view the first sample shape
+print(testSamples[0].shape)
+
+# plt.imshow(testSamples[0].squeeze(), cmap="gray")
+# plt.title(className[testLabel[0]])
+# plt.show()
+
+# make predictions
+predProbs = makePredictions(model=model2,
+                            data=testSamples)
+
+# view first two predictions probabilities
+print(predProbs[:2])
+print(testLabel)
+
+# convert prediciton probabilities to labels
+predClasses = predProbs.argmax(dim=1)
+print(predClasses)
+
+# plot predictions
+plt.figure(figsize=(9,9))
+nrows = 4
+ncols = 3
+for i, sample in enumerate(testSamples):
+    # create subplot
+    plt.subplot(nrows,ncols, i+1)
+
+    # plot the target image
+    plt.imshow(sample.squeeze(), cmap="gray")
+    plt.axis(False)
+
+    # find the prediction (in text form)
+    predLabel = className[predClasses[i]]
+
+    # Get the truth label (in text form)
+    truthLabel = className[testLabel[i]]
+
+    # create a tittle for the plot
+    titleText = f"pred: {predLabel} | Truth: {truthLabel}"
+
+    # Check for equality between pred and truth and change color of title text
+    if predLabel == truthLabel:
+        plt.title(titleText, fontsize=10, c="g" ) # green text if prediction same as truth
+    else:
+        plt.title(titleText, fontsize=10, c="r" ) # red text if predictions different as truth
+
+plt.show()
+
+# membuat confusion metrics
+# confusiion metric adalah salah satu cara untuk menyajikan data mengenai
+# seberapa bingung model terhadap test data
+
+# 1. make predictions with our trained model on the test dataset
+# 2. make a confusion matrix torchmetrics.ConfusionMatrix
+# 3. plot the confusion matix using mlxtend.plotting.plot_confuion_matrix()
+
+# make  prediction with trained model
+yPreds = []
+model2.eval()
+with torch.inference_mode():
+    for X,y in tqdm(testDataLoader, desc="Making prediction"):
+        # send the data and target to target deive
+        X,y = X.to(device),y.to(device)
+        # forward pass
+        yLogit = model2(X)
+        # turn predictions from logits to predictions probabilities to prediciton label
+        yPred = torch.softmax(yLogit.squeeze(), dim=0).argmax(dim=1) # pastikan cek input dan output sebelum set dim disini
+        # put prediction on CPU for eval
+        yPreds.append(yPred.cpu())
+
+# concatenante list of predictions into tensor
+print(yPreds)
+yPredTensor = torch.cat(yPreds)
+print(yPredTensor[:10])
+
 
